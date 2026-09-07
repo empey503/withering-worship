@@ -1082,6 +1082,7 @@ function takeOneTurn(
   rng: () => number,
   valleyVisitedThisRound: Set<string>,
   strategy: Strategy,
+  libraryPurchasedEver: Set<string>,
 ): { state: GameState; playerId: string; locationId: ReturnType<typeof scoreLocations>[number]["id"] } {
   let s = state;
   const playerId = s.playerOrder[s.activePlayerIndex];
@@ -1132,10 +1133,37 @@ function takeOneTurn(
   const forcedValleyRound = s.round > 3 && isLastTokenThisRound;
   const mandatoryFightDue = ((rotDangerZone && isLastTokenThisRound) || forcedValleyRound) && !valleyVisitedThisRound.has(playerId);
 
+  // House-rule test requirement: every player must make an actual,
+  // affordable Library of Lore purchase by round 4 — not merely visit and
+  // skip. Only forces the visit when there's something they can genuinely
+  // buy right now (bestLibraryIndex !== -1); when nothing's affordable yet,
+  // this defers instead of burning a token on an empty stop — falls through
+  // to the player's normal strategy for this token (which is also where
+  // Gold actually accumulates: Cleanup Phase Faction ticks, Exchange's
+  // piled-up Gold via exchangeGoldPilingUp above, Arena/Guild perks) and
+  // keeps re-checking every following token/round until it succeeds, even
+  // past round 4 if it has to. Excluded from the round's last token, which
+  // is reserved for the Valley rule below once round 4 begins (forcedValleyRound).
+  const libraryPurchaseDue =
+    s.round >= 4 &&
+    !isLastTokenThisRound &&
+    !libraryPurchasedEver.has(playerId) &&
+    bestLibraryIndex(s, s.players[playerId].gold) !== -1;
+
   let placed = false;
   let locationId: ReturnType<typeof scoreLocations>[number]["id"] = "wellspring";
 
-  if (mandatoryFightDue) {
+  if (libraryPurchaseDue) {
+    try {
+      s = placeActionToken(s, playerId, "library", rng);
+      locationId = "library";
+      placed = true;
+    } catch {
+      placed = false;
+    }
+  }
+
+  if (!placed && mandatoryFightDue) {
     try {
       s = placeActionToken(s, playerId, "valley", rng);
       locationId = "valley";
@@ -1203,6 +1231,7 @@ function takeOneTurn(
   } else if (locationId === "library") {
     const idx = bestLibraryIndex(s, s.players[playerId].gold);
     s = idx === -1 ? skipLibrary(s) : purchaseFromLibrary(s, idx, undefined, rng);
+    if (idx !== -1) libraryPurchasedEver.add(playerId);
   } else if (locationId === "exchange") s = runExchangeVisit(s);
   else if (locationId === "artificer") s = runArtificerVisit(s, rng);
   else if (locationId === "ancientShrine") s = runAncientShrineVisit(s, rng);
@@ -1220,6 +1249,7 @@ function runRound(
   state: GameState,
   rng: () => number,
   strategyByPlayerId: Record<string, Strategy>,
+  libraryPurchasedEver: Set<string>,
 ): { state: GameState; visitsByPlayer: Record<string, string[]> } {
   let s = state;
   let guard = 0;
@@ -1227,7 +1257,7 @@ function runRound(
   const visitsByPlayer: Record<string, string[]> = {};
   while (s.phase === "action" && guard < 500) {
     const playerId = s.playerOrder[s.activePlayerIndex];
-    const turn = takeOneTurn(s, rng, valleyVisitedThisRound, strategyByPlayerId[playerId]);
+    const turn = takeOneTurn(s, rng, valleyVisitedThisRound, strategyByPlayerId[playerId], libraryPurchasedEver);
     s = turn.state;
     (visitsByPlayer[turn.playerId] ??= []).push(turn.locationId);
     guard++;
@@ -1340,9 +1370,13 @@ export function runSimulation(
 
   let state = createGame(chosenCharacters, rng, startingResources);
   const history: SimResult["history"] = [];
+  // Persists across the whole game (unlike valleyVisitedThisRound, which
+  // resets every round inside runRound) — see libraryPurchaseDue in
+  // takeOneTurn for the round-4 Library-purchase house-rule this tracks.
+  const libraryPurchasedEver = new Set<string>();
 
   for (let round = 1; round <= roundCap; round++) {
-    const roundResult = runRound(state, rng, strategyByPlayerId);
+    const roundResult = runRound(state, rng, strategyByPlayerId, libraryPurchasedEver);
     state = roundResult.state;
 
     if (trackHistory) {
