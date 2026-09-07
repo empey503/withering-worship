@@ -1,3 +1,4 @@
+// Copyright © 2026 Steve Empey
 import { useState } from "react";
 import {
   buildRoster,

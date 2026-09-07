@@ -1,3 +1,4 @@
+// Copyright © 2026 Steve Empey
 // Config-driven Final Battle trial setup, shared by scripts/final-battle-sim.ts
 // (the /testfinal CLI) and src/TestFinalPanel.tsx (the /testfinal browser UI).
 // Pure functions only — no Node APIs (process, fs) — so this is safe to

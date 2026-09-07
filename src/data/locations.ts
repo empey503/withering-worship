@@ -1,3 +1,4 @@
+// Copyright © 2026 Steve Empey
 import type { LocationId } from "../types/game";
 
 export interface LocationDef {

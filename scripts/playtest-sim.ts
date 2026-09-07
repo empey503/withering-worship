@@ -1,3 +1,4 @@
+// Copyright © 2026 Steve Empey
 // CLI entry point for the /playtest skill. All the actual bot policy and
 // simulation logic (character strategies, Location scoring, runSimulation)
 // lives in ./ascensionSim, shared with src/TestAscensionPanel.tsx (the "Test

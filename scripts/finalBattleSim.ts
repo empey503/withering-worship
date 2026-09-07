@@ -1,3 +1,4 @@
+// Copyright © 2026 Steve Empey
 // Shared Final Battle bot policy + driver, used by both scripts/playtest-sim.ts
 // (a full game simulation that eventually reaches the Final Battle) and
 // scripts/final-battle-sim.ts (a harness that starts directly inside it).

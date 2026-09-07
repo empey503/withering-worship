@@ -1,3 +1,4 @@
+// Copyright © 2026 Steve Empey
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 

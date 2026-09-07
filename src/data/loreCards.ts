@@ -1,3 +1,4 @@
+// Copyright © 2026 Steve Empey
 import type { LoreCard } from "../types/game";
 
 // Source: "WW Game" Drive folder, Withering Worship sheet, "Lore" table.

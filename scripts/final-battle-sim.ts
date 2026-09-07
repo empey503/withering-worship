@@ -1,3 +1,4 @@
+// Copyright © 2026 Steve Empey
 // Standalone Final Battle test harness for the /testfinal skill — unlike
 // scripts/playtest-sim.ts (which plays a whole game and only reaches the
 // Final Battle if/when a bot legitimately gets there), this script starts

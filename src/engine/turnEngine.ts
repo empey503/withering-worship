@@ -1,3 +1,4 @@
+// Copyright © 2026 Steve Empey
 import { artifacts } from "../data/artifacts";
 import { locations } from "../data/locations";
 import { loreCards } from "../data/loreCards";

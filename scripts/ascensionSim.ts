@@ -1,3 +1,4 @@
+// Copyright © 2026 Steve Empey
 // Shared Ascension bot policy + driver (character strategies, Location
 // scoring, Market/Artificer/Ancient Shrine/Valley/Arena/Exchange visit
 // logic, and runSimulation), used by scripts/playtest-sim.ts (the /playtest

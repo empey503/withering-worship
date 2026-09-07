@@ -1,3 +1,4 @@
+// Copyright © 2026 Steve Empey
 // Core data shapes mirroring the Withering Worship rulebook and card sheet.
 // Source: "WW Game" Drive folder — Withering Worship (doc) + Withering Worship (sheet).
 

@@ -1,3 +1,4 @@
+// Copyright © 2026 Steve Empey
 import type { Character } from "../types/game";
 
 // Source: Withering Worship rulebook, "Player Characters" section.
