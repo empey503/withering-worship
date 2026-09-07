@@ -36,18 +36,49 @@ function startingGoldForPlayerCount(playerCount: number): number {
   return STARTING_GOLD_BY_PLAYER_COUNT[playerCount];
 }
 
-// Lets a test harness (scripts/ascensionSim.ts's runSimulation, in turn used
-// by scripts/playtest-sim.ts and src/TestAscensionPanel.tsx) start a
-// simulated game off-curve from the rulebook's player-count tables above —
-// e.g. to see how balance shifts with a richer or poorer opening hand — while
-// real gameplay (GameBoard.tsx's createGame call) keeps using the tables via
-// the defaults below when no override is passed. `mana` is the same total
-// mana the STARTING_MANA_BY_PLAYER_COUNT table reports (split evenly across
-// both Attunement Pools), not a per-pool amount.
+// Lets a caller start a game off-curve from the rulebook's player-count
+// tables above: a test harness (scripts/ascensionSim.ts's runSimulation, in
+// turn used by scripts/playtest-sim.ts and src/TestAscensionPanel.tsx) uses
+// this directly to try arbitrary opening hands, while real gameplay
+// (GameBoard.tsx's createGame call) uses it to apply the Difficulty setting
+// (see startingResourcesForDifficulty below) — omitting it entirely falls
+// back to the Standard tables' own defaults. `mana` is the same total mana
+// the STARTING_MANA_BY_PLAYER_COUNT table reports (split evenly across both
+// Attunement Pools), not a per-pool amount.
 export interface StartingResourceOverrides {
   gold?: number;
   mana?: number;
   actionTokens?: number;
+}
+
+// Difficulty setting, real-game only (GameBoard.tsx's Start a Game screen) —
+// prototype-only, not from the physical rulebook. "Standard" is exactly the
+// Setup tables above; "Elite" is a harder opening hand for players who find
+// Standard too easy, scaled down per player count rather than a flat
+// reduction (a flat cut would hit the 1-2 player tables, already generous,
+// far less than the 4-6 player tables, already tight). Not wired into the
+// test harness (scripts/ascensionSim.ts) — its own Starting Gold/Mana/Action
+// Tokens fields already give free-form control over the same numbers, so a
+// second, named-preset path there would be redundant.
+export type Difficulty = "standard" | "elite";
+
+export const ELITE_GOLD_BY_PLAYER_COUNT: Record<number, number> = { 1: 4, 2: 2, 3: 2, 4: 1, 5: 0, 6: 0 };
+export const ELITE_MANA_BY_PLAYER_COUNT: Record<number, number> = { 1: 8, 2: 4, 3: 2, 4: 1, 5: 0, 6: 0 };
+export const ELITE_ACTION_TOKENS_BY_PLAYER_COUNT: Record<number, number> = { 1: 3, 2: 3, 3: 2, 4: 2, 5: 1, 6: 1 };
+
+export function startingResourcesForDifficulty(playerCount: number, difficulty: Difficulty): StartingResourceOverrides {
+  if (difficulty === "elite") {
+    return {
+      gold: ELITE_GOLD_BY_PLAYER_COUNT[playerCount],
+      mana: ELITE_MANA_BY_PLAYER_COUNT[playerCount],
+      actionTokens: ELITE_ACTION_TOKENS_BY_PLAYER_COUNT[playerCount],
+    };
+  }
+  return {
+    gold: STARTING_GOLD_BY_PLAYER_COUNT[playerCount],
+    mana: STARTING_MANA_BY_PLAYER_COUNT[playerCount],
+    actionTokens: actionTokensForPlayerCount(playerCount),
+  };
 }
 
 const CORE_LOCATION_IDS: LocationId[] = locations

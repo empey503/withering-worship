@@ -111,12 +111,15 @@ import {
   skipRotToMarketRowPerk,
   skipValleyScry,
   skipMarket,
+  startingResourcesForDifficulty,
+  type Difficulty,
 } from "./engine/turnEngine";
 import type { GameState, PendingRuneStoneChoice } from "./engine/types";
 import type { ArtifactCard, Character, LocationId, LoreCard } from "./types/game";
 
-function PlayerSetup({ onStart }: { onStart: (chars: Character[]) => void }) {
+function PlayerSetup({ onStart }: { onStart: (chars: Character[], difficulty: Difficulty) => void }) {
   const [playerCount, setPlayerCount] = useState(3);
+  const [difficulty, setDifficulty] = useState<Difficulty>("standard");
   const eligibleForCount = playerCount === 1 ? characters.filter((c) => c.canPlaySolo) : characters;
   const [selected, setSelected] = useState<string[]>(
     eligibleForCount.slice(0, playerCount).map((c) => c.name),
@@ -150,7 +153,20 @@ function PlayerSetup({ onStart }: { onStart: (chars: Character[]) => void }) {
             ))}
           </select>
         </label>
+        <label>
+          Difficulty:{" "}
+          <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
+            <option value="standard">Standard</option>
+            <option value="elite">Elite</option>
+          </select>
+        </label>
       </div>
+      {difficulty === "elite" && (
+        <p className="meta">
+          Elite: a harder opening hand (less starting Gold, Mana, and — at 3, 5, or 6 players — fewer Action
+          Tokens) than Standard's own Setup tables. Prototype-only, not from the physical rulebook.
+        </p>
+      )}
       {playerCount === 1 && (
         <p className="meta">Solo Play: Kael and Taza are unavailable as your Character.</p>
       )}
@@ -171,7 +187,7 @@ function PlayerSetup({ onStart }: { onStart: (chars: Character[]) => void }) {
       <button
         onClick={() => {
           const chosen = selected.map((name) => characters.find((c) => c.name === name)!);
-          onStart(chosen);
+          onStart(chosen, difficulty);
         }}
       >
         Start Game
@@ -3485,7 +3501,11 @@ function GameBoard() {
   const [state, setState] = useState<GameState | null>(null);
 
   if (!state) {
-    return <PlayerSetup onStart={(chars) => setState(createGame(chars))} />;
+    return (
+      <PlayerSetup
+        onStart={(chars, difficulty) => setState(createGame(chars, undefined, startingResourcesForDifficulty(chars.length, difficulty)))}
+      />
+    );
   }
 
   return (
