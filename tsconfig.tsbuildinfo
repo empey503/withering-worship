@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/gameboard.tsx","./src/main.tsx","./src/data/artifacts.ts","./src/data/characters.ts","./src/data/locations.ts","./src/data/lorecards.ts","./src/data/rotcards.ts","./src/data/runestones.ts","./src/engine/turnengine.ts","./src/engine/types.ts","./src/types/game.ts"],"version":"5.9.3"}
