@@ -232,16 +232,20 @@ Also report:
 Every `/playtest` run publishes (or updates) an HTML dashboard Artifact
 showing Gold, Artifact Mana, Lore Mana, and Attack Strength per player per
 round, alongside the shared Rot Counter trend (with the danger-zone threshold
-marked) and a full sortable round-by-round table that includes a Rot
-Artifacts column (how many Artifacts the Rot currently has equipped, by
-round) and a Locations Visited column (the 3 — or 2, at 5-6 players — action
-tokens each player placed that round, in order). Build it from
-`detailed.history` — each round's player entries already carry `gold`,
-`manaPools`, `strength`, `rotCardsInPlayerArea`, `attuned.lore.length`,
-`factionTrack`, and `locations` (the ordered array of Location IDs that
-player visited that round, from `takeOneTurn`/`runRound` in the harness);
-the Rot's entry carries `rotArtifacts.length` (from `rotReport`) for the Rot
-Artifacts column.
+marked), a Location Visits chart (total Action Token placements this run,
+stacked by player, per Location — aggregated by summing each round's
+`locations` array across all rounds and players, sorted by total descending),
+and a full sortable round-by-round table that includes a Rot Artifacts column
+(how many Artifacts the Rot currently has equipped, by round) and a Locations
+Visited column (the 3 — or 2, at 5-6 players — action tokens each player
+placed that round, in order). Build it from `detailed.history` — each
+round's player entries already carry `gold`, `manaPools`, `strength`,
+`rotCardsInPlayerArea`, `attuned.lore.length`, `factionTrack`, and
+`locations` (the ordered array of Location IDs that player visited that
+round, from `takeOneTurn`/`runRound` in the harness) — the Location Visits
+chart is derived from this same `locations` data, no separate tracking
+needed; the Rot's entry carries `rotArtifacts.length` (from `rotReport`) for
+the Rot Artifacts column.
 
 - Before writing it, load the `artifact-design` skill (required for any
   artifact) — this is a utilitarian dashboard treatment, not an editorial
