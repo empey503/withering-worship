@@ -6,7 +6,10 @@ import {
   STARTING_GOLD_BY_PLAYER_COUNT,
   STARTING_MANA_BY_PLAYER_COUNT,
 } from "./engine/turnEngine";
+import { locations as locationDefs } from "./data/locations";
 import TestFinalPanel from "./TestFinalPanel";
+
+const LOCATION_NAME: Record<string, string> = Object.fromEntries(locationDefs.map((l) => [l.id, l.name]));
 
 // Browser UI covering all 3 phases of the game per docs/rules.md's "Ending
 // the Game" framing: The Ascension alone, The Final Battle alone (delegates
@@ -82,7 +85,7 @@ function AscensionHarness({ mode }: { mode: "ascensionOnly" | "full" }) {
       const startingResources = { gold, mana, actionTokens };
       for (let i = 0; i < count; i++) {
         const trialSeed = seed + i;
-        out.push({ seed: trialSeed, result: runSimulation(playerCount, trialSeed, roundCap, false, mode, startingResources) });
+        out.push({ seed: trialSeed, result: runSimulation(playerCount, trialSeed, roundCap, true, mode, startingResources) });
       }
       setResults(out);
       // Advance past the seed range just used, so clicking Run again
@@ -161,7 +164,7 @@ function AscensionHarness({ mode }: { mode: "ascensionOnly" | "full" }) {
       </div>
 
       {results && results.length > 1 && <BatchReport mode={mode} playerCount={playerCount} results={results} />}
-      {results && results.length === 1 && <SingleRunReport mode={mode} result={results[0].result} />}
+      {results && results.length === 1 && <SingleRunReport mode={mode} playerCount={playerCount} result={results[0].result} />}
     </>
   );
 }
@@ -195,9 +198,20 @@ function StartingResourcesTable({ selectedPlayerCount }: { selectedPlayerCount: 
   );
 }
 
-function SingleRunReport({ mode, result }: { mode: "ascensionOnly" | "full"; result: SimResult }) {
+function SingleRunReport({
+  mode,
+  playerCount,
+  result,
+}: {
+  mode: "ascensionOnly" | "full";
+  playerCount: number;
+  result: SimResult;
+}) {
+  const roster = buildAscensionRoster(playerCount).map((c) => c.name);
   return (
     <>
+      <p className="meta">Location visits this run</p>
+      <LocationVisitsTable historyList={[result.history]} roster={roster} />
       <div className="kpi-row">
         <div className="kpi-card">
           <div className="kpi-value">{outcomeLabel(result)}</div>
@@ -329,6 +343,9 @@ function BatchReport({
           </tbody>
         </table>
 
+        <p className="meta">Location visits, total across all {total} trials</p>
+        <LocationVisitsTable historyList={results.map((r) => r.result.history)} roster={roster} />
+
         <details>
           <summary>Per-trial results ({total})</summary>
           <table className="result-table">
@@ -417,6 +434,9 @@ function BatchReport({
         </tbody>
       </table>
 
+      <p className="meta">Location visits, total across all {total} trials</p>
+      <LocationVisitsTable historyList={results.map((r) => r.result.history)} roster={roster} />
+
       <details>
         <summary>Per-trial results ({total})</summary>
         <table className="result-table">
@@ -441,6 +461,66 @@ function BatchReport({
         </table>
       </details>
     </>
+  );
+}
+
+// Aggregates the `locations` arrays already carried on each history round's
+// per-player entries (see SimResult["history"] in ascensionSim.ts) into a
+// visit count per Location, broken down by player — across one or many
+// trials' worth of history at once, so the same helper covers both the
+// single-run and batch reports.
+function locationVisitCounts(
+  historyList: SimResult["history"][],
+  roster: string[],
+): { locationId: string; name: string; total: number; byPlayer: Record<string, number> }[] {
+  const byLocation: Record<string, Record<string, number>> = {};
+  historyList.forEach((history) => {
+    history.forEach((round) => {
+      round.players.forEach((p) => {
+        p.locations.forEach((locationId) => {
+          byLocation[locationId] = byLocation[locationId] ?? {};
+          byLocation[locationId][p.name] = (byLocation[locationId][p.name] ?? 0) + 1;
+        });
+      });
+    });
+  });
+  return Object.keys(byLocation)
+    .map((locationId) => {
+      const byPlayer = byLocation[locationId];
+      const total = roster.reduce((sum, name) => sum + (byPlayer[name] ?? 0), 0);
+      return { locationId, name: LOCATION_NAME[locationId] ?? locationId, total, byPlayer };
+    })
+    .sort((a, b) => b.total - a.total);
+}
+
+function LocationVisitsTable({ historyList, roster }: { historyList: SimResult["history"][]; roster: string[] }) {
+  const rows = locationVisitCounts(historyList, roster);
+  if (rows.length === 0) {
+    return <p className="meta">No Location visits recorded (the run ended before any Ascension round completed).</p>;
+  }
+  return (
+    <table className="result-table">
+      <thead>
+        <tr>
+          <th>Location</th>
+          {roster.map((name) => (
+            <th key={name}>{name}</th>
+          ))}
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.locationId}>
+            <td>{row.name}</td>
+            {roster.map((name) => (
+              <td key={name}>{row.byPlayer[name] ?? 0}</td>
+            ))}
+            <td>{row.total}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
