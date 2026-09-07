@@ -3,6 +3,7 @@ import { useState } from "react";
 import { buildAscensionRoster, runSimulation, type SimResult } from "../scripts/ascensionSim";
 import {
   actionTokensForPlayerCount,
+  startingResourcesForDifficulty,
   STARTING_GOLD_BY_PLAYER_COUNT,
   STARTING_MANA_BY_PLAYER_COUNT,
 } from "./engine/turnEngine";
@@ -78,6 +79,16 @@ function AscensionHarness({ mode }: { mode: "ascensionOnly" | "full" }) {
     setActionTokens(actionTokensForPlayerCount(playerCount));
   }
 
+  // Elite is the real game's harder Difficulty preset (see Start a Game in
+  // GameBoard.tsx) — offered here too so the harness can try that same
+  // opening hand instead of only the rulebook's own Standard tables above.
+  function resetResourcesToElite() {
+    const elite = startingResourcesForDifficulty(playerCount, "elite");
+    setGold(elite.gold!);
+    setMana(elite.mana!);
+    setActionTokens(elite.actionTokens!);
+  }
+
   function run(count: number) {
     setRunning(true);
     try {
@@ -149,6 +160,9 @@ function AscensionHarness({ mode }: { mode: "ascensionOnly" | "full" }) {
       <div className="setup-row">
         <button type="button" onClick={resetResourcesToDefaults}>
           Reset resources to rulebook defaults
+        </button>
+        <button type="button" onClick={resetResourcesToElite}>
+          Reset resources to Elite difficulty
         </button>
       </div>
 
