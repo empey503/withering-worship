@@ -3282,6 +3282,7 @@ function FinalRankingPanel({ state }: { state: GameState }) {
   const ranking = state.finalRanking;
   if (!ranking) return null;
   const sorted = [...ranking].sort((a, b) => a.rank - b.rank);
+  const topRank = sorted[0]?.rank;
 
   return (
     <section className="panel">
@@ -3292,14 +3293,38 @@ function FinalRankingPanel({ state }: { state: GameState }) {
       <div className="card-grid">
         {sorted.map((entry) => {
           const player = state.players[entry.playerId];
+          const awards = entry.goldAwards;
+          const awardLines: string[] = [];
+          if (awards.initiatedFinalBattle) awardLines.push("Initiated the Final Battle (+10)");
+          if (awards.dealtKillingBlow) awardLines.push("Dealt the Killing Blow to The Rot (+10)");
+          if (awards.warriorsGuildUnlocked) awardLines.push("Unlocked the Warriors Guild (+5)");
+          if (awards.scholarsGuildUnlocked) awardLines.push("Unlocked the Scholars Guild (+5)");
+          if (awards.attunedArtifactCount > 0) {
+            awardLines.push(
+              `${awards.attunedArtifactCount} Attuned Artifact${awards.attunedArtifactCount === 1 ? "" : "s"} (+${awards.attunedArtifactCount})`,
+            );
+          }
+          if (awards.manaBonus > 0) awardLines.push(`Mana in Pools (+${awards.manaBonus})`);
+
           return (
-            <div className={`card${entry.isWinner ? " selected" : ""}`} key={entry.playerId}>
+            <div className={`card${entry.rank === topRank ? " selected" : ""}`} key={entry.playerId}>
               <h3>
                 #{entry.rank} — {player.character.name}
               </h3>
               {entry.isWinner && <p className="meta">Defeated The Rot!</p>}
               <p className="meta">
-                Attuned Gold Value: {entry.attunedGoldValue} · Lore Deck: {entry.loreDeckCount}
+                Final Gold: {entry.finalGold} (Gold {entry.baseGold}
+                {awardLines.length > 0 ? ` + Awards ${entry.finalGold - entry.baseGold}` : ""})
+              </p>
+              {awardLines.length > 0 && (
+                <ul className="meta">
+                  {awardLines.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              )}
+              <p className="meta">
+                Lore cards: {entry.totalLoreCards} · Artifact cards: {entry.totalArtifactCards}
               </p>
             </div>
           );

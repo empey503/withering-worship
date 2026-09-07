@@ -9,6 +9,7 @@ import type {
   CharacterBoardSlotRef,
   EnginePlayer,
   FinalRankingEntry,
+  FinalRankingGoldAwards,
   GameState,
   ManaPools,
   PendingFactionPerk,
@@ -262,6 +263,7 @@ export function createGame(
     pendingFinalBattleCombat: null,
     pendingFinalBattleOutcome: null,
     finalBattleBoonClaimed: false,
+    finalBattleInitiatorId: null,
     pendingFactionPerks: [],
     pendingValleyScry: null,
     pendingValleyEncounter: null,
@@ -5132,7 +5134,7 @@ export function initiateFinalBattle(state: GameState, rng: () => number = Math.r
   const player = state.players[playerId];
   const { cards, deck, discard, log } = drawTwoFinalBattleCombatCards(state.rotDeck, state.rotDiscard, rng);
   if (!cards) {
-    return finalBattleWinByExhaustion(state, playerId, deck, discard, log);
+    return finalBattleWinByExhaustion({ ...state, finalBattleInitiatorId: playerId }, playerId, deck, discard, log);
   }
 
   // "The first player to initiate The Final Battle receives a one-time boon
@@ -5173,6 +5175,7 @@ export function initiateFinalBattle(state: GameState, rng: () => number = Math.r
     pendingFinalBattleCombat: { playerId, rotCards: cards },
     phase: "finalBattle",
     finalBattleBoonClaimed,
+    finalBattleInitiatorId: playerId,
     log: [
       ...state.log,
       `${player.character.name} initiates The Final Battle!`,
@@ -5796,55 +5799,70 @@ function advanceToNextFinalBattleCombatant(
   };
 }
 
-// Rulebook, "Final Ranking": computed once whenever the game reaches
-// "gameOver". `winnerId` is the player who removed the last Rot Artifact, or
-// null for a Rot win (the rulebook only describes ranking for a win — a Rot
-// win just ranks everyone by the same Gold-value/Lore-count rule, with no
-// `isWinner` entry). A fully defeated Final Battle combatant's board is
-// empty, so their Gold value is naturally 0 — no separate "defeated" case
-// needed, the sort already puts them last.
+// A player's "Attuned Artifact" count for the Final Ranking's Gold Award —
+// the 3 equipment slots plus however many Rune Stones they have equipped.
+function attunedArtifactCount(player: EnginePlayer): number {
+  return (
+    (player.equippedWeapon ? 1 : 0) +
+    (player.equippedArmor ? 1 : 0) +
+    (player.equippedImplement ? 1 : 0) +
+    player.equippedRuneStones.length
+  );
+}
+
+// Rulebook, "Final Ranking": "The player with the highest Gold count wins."
+// Computed once whenever the game reaches "gameOver". `winnerId` is the
+// player who dealt the killing blow (removed the last Rot Artifact, or won
+// by Combat card exhaustion — see finalBattleWinByExhaustion), or null for a
+// Rot win — in which case no player's goldAwards.dealtKillingBlow is true,
+// but everyone is still ranked by Gold. A fully defeated Final Battle
+// combatant's board is empty, so their Attuned-Artifact/Mana Gold Awards are
+// naturally 0 — no separate "defeated" case needed.
 function computeFinalRanking(state: GameState, winnerId: string | null): FinalRankingEntry[] {
-  const attunedGoldValue = (player: EnginePlayer): number =>
-    (player.equippedWeapon?.goldCost ?? 0) +
-    (player.equippedArmor?.goldCost ?? 0) +
-    (player.equippedImplement?.goldCost ?? 0) +
-    player.equippedRuneStones.reduce((sum, c) => sum + c.goldCost, 0) +
-    player.attunedLore.reduce((sum, c) => sum + c.goldCost, 0);
+  const unranked = state.playerOrder.map((playerId) => {
+    const player = state.players[playerId];
+    const goldAwards: FinalRankingGoldAwards = {
+      initiatedFinalBattle: state.finalBattleInitiatorId === playerId,
+      dealtKillingBlow: winnerId === playerId,
+      warriorsGuildUnlocked: isWarriorsGuildUnlocked(player),
+      scholarsGuildUnlocked: isScholarsGuildUnlocked(player),
+      attunedArtifactCount: attunedArtifactCount(player),
+      manaBonus: Math.floor((player.manaPools.artifact + player.manaPools.lore) / 3),
+    };
+    const awardTotal =
+      (goldAwards.initiatedFinalBattle ? 10 : 0) +
+      (goldAwards.dealtKillingBlow ? 10 : 0) +
+      (goldAwards.warriorsGuildUnlocked ? 5 : 0) +
+      (goldAwards.scholarsGuildUnlocked ? 5 : 0) +
+      goldAwards.attunedArtifactCount +
+      goldAwards.manaBonus;
 
-  const others = state.playerOrder.filter((id) => id !== winnerId);
-  const sorted = [...others].sort((a, b) => {
-    const goldDiff = attunedGoldValue(state.players[b]) - attunedGoldValue(state.players[a]);
-    if (goldDiff !== 0) return goldDiff;
-    return state.players[b].loreDeck.length - state.players[a].loreDeck.length;
+    return {
+      playerId,
+      baseGold: player.gold,
+      finalGold: player.gold + awardTotal,
+      goldAwards,
+      totalLoreCards: player.loreDeck.length + player.loreDiscard.length + player.attunedLore.length,
+      totalArtifactCards: player.artifactDeck.length + player.artifactDiscard.length + goldAwards.attunedArtifactCount,
+      isWinner: winnerId === playerId,
+    };
   });
 
+  const sorted = [...unranked].sort((a, b) => {
+    if (b.finalGold !== a.finalGold) return b.finalGold - a.finalGold;
+    if (b.totalLoreCards !== a.totalLoreCards) return b.totalLoreCards - a.totalLoreCards;
+    return b.totalArtifactCards - a.totalArtifactCards;
+  });
+
+  // Standard competition ranking: ties share a rank, the next distinct rank
+  // skips ahead by the tied group's size (e.g. 1, 2, 2, 4).
   const entries: FinalRankingEntry[] = [];
-  if (winnerId) {
-    const player = state.players[winnerId];
-    entries.push({
-      playerId: winnerId,
-      rank: 1,
-      attunedGoldValue: attunedGoldValue(player),
-      loreDeckCount: player.loreDeck.length,
-      isWinner: true,
-    });
-  }
-
-  const startRank = winnerId ? 2 : 1;
-  sorted.forEach((id, i) => {
-    const player = state.players[id];
-    const goldValue = attunedGoldValue(player);
-    const loreDeckCount = player.loreDeck.length;
-    let rank = startRank + i;
-    if (i > 0) {
-      const prev = entries[entries.length - 1];
-      if (prev.attunedGoldValue === goldValue && prev.loreDeckCount === loreDeckCount) {
-        rank = prev.rank;
-      }
-    }
-    entries.push({ playerId: id, rank, attunedGoldValue: goldValue, loreDeckCount, isWinner: false });
+  sorted.forEach((entry, i) => {
+    const prev = entries[i - 1];
+    const tiedWithPrev =
+      prev && prev.finalGold === entry.finalGold && prev.totalLoreCards === entry.totalLoreCards && prev.totalArtifactCards === entry.totalArtifactCards;
+    entries.push({ ...entry, rank: tiedWithPrev ? prev.rank : i + 1 });
   });
-
   return entries;
 }
 

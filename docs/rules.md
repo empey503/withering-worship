@@ -384,11 +384,23 @@ If all players are defeated, The Rot wins the game.
 
 ### Final Ranking
 
-After the final Rot Encounter, determine each player's final ranking:
+After the final Rot Encounter, determine each player's final ranking. The player with the highest Gold count wins.
 
-- The player who deals the final blow by removing the last card from the Rot is the winner.
-- Rank all remaining players by the total Gold value of their Attuned cards, from highest to lowest.
-- If two or more players are tied, the tied player with the most cards in their Lore Deck ranks higher.
+Add the following Gold Awards to your existing Gold to determine the final rankings:
+
+| Gold Award | Achievement |
+| --- | --- |
+| 10 | Initiated the Final Battle |
+| 10 | Dealt the Killing Blow to The Rot |
+| 5 | Unlocked the Warriors Guild |
+| 5 | Unlocked the Scholars Guild |
+| 1 | For each Attuned Artifact at end of the game |
+| 1 | For every 3 Mana in your Pools at end of the game |
+
+Tiebreakers:
+
+- Most total Lore cards (Deck, Discard, and Attuned).
+- Most total Artifact cards (Deck, Discard, and Attuned).
 - If still tied, the tied players share that position.
 
 ## Game Elements

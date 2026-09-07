@@ -312,21 +312,35 @@ export type PendingRuneStoneChoice =
 // of) the Faction 3 Scry — see placeActionToken/discardPremonition.
 export type PendingValleyPremonition = { runeStoneIndex: number; revealed: RotCard[] };
 
-// Rulebook, "Final Ranking": "The player who deals the final blow by
-// removing the last card from the Rot is the winner. Rank all remaining
-// players by the total Gold value of their Attuned cards, from highest to
-// lowest. If two or more players are tied, the tied player with the most
-// cards in their Lore Deck ranks higher. If still tied, the tied players
-// share that position." Computed once, whenever the game reaches
-// "gameOver" (Rot defeated or Rot wins — the rulebook only describes the
-// win case, so a Rot win just ranks everyone with no `isWinner` entry). Ties
-// share a rank; the next distinct rank skips ahead by the tied group's size
-// (standard competition ranking, e.g. 1, 2, 2, 4).
+// Rulebook, "Final Ranking": "The player with the highest Gold count wins."
+// Each player's end-of-game Gold (their running total, `baseGold`) is topped
+// up with Gold Awards (`goldAwards`) to get `finalGold`, and all players —
+// not just whoever dealt the killing blow — are ranked by that. Ties break
+// on total Lore cards (Deck + Discard + Attuned), then total Artifact cards
+// (Deck + Discard + Attuned); still-tied players share a rank, and the next
+// distinct rank skips ahead by the tied group's size (standard competition
+// ranking, e.g. 1, 2, 2, 4). Computed once, whenever the game reaches
+// "gameOver" (Rot defeated or Rot wins — a Rot win just means no player's
+// goldAwards.dealtKillingBlow is true).
+export interface FinalRankingGoldAwards {
+  initiatedFinalBattle: boolean; // 10 Gold
+  dealtKillingBlow: boolean; // 10 Gold
+  warriorsGuildUnlocked: boolean; // 5 Gold
+  scholarsGuildUnlocked: boolean; // 5 Gold
+  attunedArtifactCount: number; // 1 Gold each
+  manaBonus: number; // 1 Gold per 3 Mana across both Pools
+}
+
 export interface FinalRankingEntry {
   playerId: string;
   rank: number;
-  attunedGoldValue: number;
-  loreDeckCount: number;
+  baseGold: number;
+  finalGold: number;
+  goldAwards: FinalRankingGoldAwards;
+  totalLoreCards: number;
+  totalArtifactCards: number;
+  // Dealt the killing blow to The Rot — kept distinct from `rank`/`finalGold`
+  // since the Gold Award for it doesn't guarantee the highest final Gold.
   isWinner: boolean;
 }
 
@@ -353,6 +367,10 @@ export interface GameState {
   // set true the first time initiateFinalBattle runs, regardless of whether
   // that player had anything to Attune or chose to Decline. Never resets.
   finalBattleBoonClaimed: boolean;
+  // Who actually started The Final Battle — set once, by initiateFinalBattle
+  // (there is exactly one initiator per game). Worth its own 10-Gold Final
+  // Ranking award, distinct from the first-initiator boon above.
+  finalBattleInitiatorId: string | null;
   pendingValleyScry: PendingValleyScry | null;
   pendingValleyEncounter: PendingValleyEncounter | null;
   pendingValleyOutcome: PendingValleyOutcome | null;
